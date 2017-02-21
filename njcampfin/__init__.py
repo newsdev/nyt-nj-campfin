@@ -1,7 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 import time
-
+import sys
+import json
 
 def get_filing_list():
     #TODO make this take parameters, right now just does 2017 governor
@@ -79,4 +80,4 @@ def get_filing_list():
         else:
             break
 
-    return results
+    sys.stdout.write(json.dumps(results))
