@@ -19,6 +19,7 @@ def get_filing_list():
     eventvalidation = soup.find('input', {'id':'__EVENTVALIDATION'})['value']
 
     #hit governor list page to get new fresh values of __EVENTVALIDATION and __VIEWSTATE
+    #TODO will fail if there are more than 25, paginate.
     data = {"__EVENTTARGET":None,
         "__EVENTARGUMENT":None,
         "ctl00$ContentPlaceHolder1$usrSearch1$Committee":"Candidate",
