@@ -4,6 +4,7 @@ import time
 import sys
 import json
 import os
+import urllib
 
 def get_filing_list():
     #TODO make this take parameters, right now just does 2017 governor
@@ -94,36 +95,42 @@ def get_candidate_contribs():
     eventvalidation = soup.find('input', {'id':'__EVENTVALIDATION'})['value']
 
 
-    data = {"__EVENTTARGET":None,
-        "__EVENTARGUMENT":None,
-        "__LASTFOCUS":None,
+    data = {"__EVENTTARGET":"",
+        "__EVENTARGUMENT":"",
+        "__LASTFOCUS":"",
         "__VIEWSTATE":viewstate,
         "__EVENTVALIDATION":eventvalidation,
         "ctl00$ContentPlaceHolder1$Pactype":"rboAll",
-        "ctl00$ContentPlaceHolder1$txtElectionTypeList":None,
+        "ctl00$ContentPlaceHolder1$txtElectionTypeList":"",
         "ctl00$ContentPlaceHolder1$lboElectionYearList":2017,
         "ctl00$ContentPlaceHolder1$txtElectionYearList":2017,
         "ctl00$ContentPlaceHolder1$lboOffice":0,
         "ctl00$ContentPlaceHolder1$txtOfficeList":"GOVERNOR",
-        "ctl00$ContentPlaceHolder1$txtPacTypeList":None,
-        "ctl00$ContentPlaceHolder1$txtPartyList":None,
-        "ctl00$ContentPlaceHolder1$lboLocationList":None,
-        "ctl00$ContentPlaceHolder1$txtLocationList":None,
-        "ctl00$ContentPlaceHolder1$txtContributorTypeList":None,
-        "ctl00$ContentPlaceHolder1$txtOccupationList":None,
-        "ctl00$ContentPlaceHolder1$txtEmployer":None,
+        "ctl00$ContentPlaceHolder1$txtPacTypeList":"",
+        "ctl00$ContentPlaceHolder1$txtPartyList":"",
+        "ctl00$ContentPlaceHolder1$lboLocationList":"",
+        "ctl00$ContentPlaceHolder1$txtLocationList":"",
+        "ctl00$ContentPlaceHolder1$txtContributorTypeList":"",
+        "ctl00$ContentPlaceHolder1$txtOccupationList":"",
+        "ctl00$ContentPlaceHolder1$txtEmployer":"",
         "ctl00$ContentPlaceHolder1$btnSubmit":"Submit"}
 
     r = s.post(url, data=data)
+    soup = BeautifulSoup(r.text)
     viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
     eventvalidation = soup.find('input', {'id':'__EVENTVALIDATION'})['value']
 
-    data = {"__EVENTTARGET":None,
-        "__EVENTARGUMENT":None,
-        "__LASTFOCUS"None,
+    data = {"__EVENTTARGET":"",
+        "__EVENTARGUMENT":"",
+        "__LASTFOCUS":"",
         "__VIEWSTATE":viewstate,
         "__EVENTVALIDATION":eventvalidation,
-        "ctl00$ContentPlaceHolder1$usrCommonDetails1$usrCommonGrid1$ddlRowsPerPage":25,
-        "ctl00$ContentPlaceHolder1$usrCommonDetails1$usrCommonGrid1$btnRecords":"Download Records"}
+        "ctl00$ContentPlaceHolder1$usrCommonGrid1$ddlRowsPerPage":"25",
+        "ctl00$ContentPlaceHolder1$usrCommonGrid1$btnRecords":"Download Records"}
 
-    r = s.post(url, data=data)
+    url_encoded = urllib.parse.urlencode(data)
+
+    curl_request = "curl -o test.csv 'http://www.elec.state.nj.us/ELECReport/SearchContributorsAdvanced.aspx' --data '{}'".format(url_encoded)
+    print(curl_request)
+    os.system(curl_request)
+
