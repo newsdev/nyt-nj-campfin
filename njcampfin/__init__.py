@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import time
 import sys
 import json
+import os
 
 def get_filing_list():
     #TODO make this take parameters, right now just does 2017 governor
@@ -18,6 +19,7 @@ def get_filing_list():
     soup = BeautifulSoup(r.text)
     viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
     eventvalidation = soup.find('input', {'id':'__EVENTVALIDATION'})['value']
+    print('got search page')
 
     #hit governor list page to get new fresh values of __EVENTVALIDATION and __VIEWSTATE
     #TODO will fail if there are more than 25, paginate.
@@ -42,6 +44,7 @@ def get_filing_list():
     soup = BeautifulSoup(r.text)
     viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
     eventvalidation = soup.find('input', {'id':'__EVENTVALIDATION'})['value']
+    print('got list page')
 
     #hit links until we find one with no name, that means it's an error and we're done!
     i = 0
@@ -51,7 +54,7 @@ def get_filing_list():
             '__LASTFOCUS':None,
             '__VIEWSTATE':viewstate,
             '__EVENTVALIDATION':eventvalidation,
-            'ctl00$ContentPlaceHolder1$usrCommonGrid1$ddlRowsPerPage':'25'}
+            'ctl00$ContentPlaceHolder1$usrCommonGrid1$ddlRowsPerPage':'500'}
 
         r = s.post('http://www.elec.state.nj.us/ELECReport/SearchCandidate.aspx', data=data)
         soup = BeautifulSoup(r.text)
@@ -81,3 +84,46 @@ def get_filing_list():
             break
 
     sys.stdout.write(json.dumps(results))
+
+def get_candidate_contribs():
+    s = requests.session()
+    url = 'http://www.elec.state.nj.us/ELECReport/SearchContributorsAdvanced.aspx'
+    r = s.get(url)
+    soup = BeautifulSoup(r.text)
+    viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
+    eventvalidation = soup.find('input', {'id':'__EVENTVALIDATION'})['value']
+
+
+    data = {"__EVENTTARGET":None,
+        "__EVENTARGUMENT":None,
+        "__LASTFOCUS":None,
+        "__VIEWSTATE":viewstate,
+        "__EVENTVALIDATION":eventvalidation,
+        "ctl00$ContentPlaceHolder1$Pactype":"rboAll",
+        "ctl00$ContentPlaceHolder1$txtElectionTypeList":None,
+        "ctl00$ContentPlaceHolder1$lboElectionYearList":2017,
+        "ctl00$ContentPlaceHolder1$txtElectionYearList":2017,
+        "ctl00$ContentPlaceHolder1$lboOffice":0,
+        "ctl00$ContentPlaceHolder1$txtOfficeList":"GOVERNOR",
+        "ctl00$ContentPlaceHolder1$txtPacTypeList":None,
+        "ctl00$ContentPlaceHolder1$txtPartyList":None,
+        "ctl00$ContentPlaceHolder1$lboLocationList":None,
+        "ctl00$ContentPlaceHolder1$txtLocationList":None,
+        "ctl00$ContentPlaceHolder1$txtContributorTypeList":None,
+        "ctl00$ContentPlaceHolder1$txtOccupationList":None,
+        "ctl00$ContentPlaceHolder1$txtEmployer":None,
+        "ctl00$ContentPlaceHolder1$btnSubmit":"Submit"}
+
+    r = s.post(url, data=data)
+    viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
+    eventvalidation = soup.find('input', {'id':'__EVENTVALIDATION'})['value']
+
+    data = {"__EVENTTARGET":None,
+        "__EVENTARGUMENT":None,
+        "__LASTFOCUS"None,
+        "__VIEWSTATE":viewstate,
+        "__EVENTVALIDATION":eventvalidation,
+        "ctl00$ContentPlaceHolder1$usrCommonDetails1$usrCommonGrid1$ddlRowsPerPage":25,
+        "ctl00$ContentPlaceHolder1$usrCommonDetails1$usrCommonGrid1$btnRecords":"Download Records"}
+
+    r = s.post(url, data=data)
