@@ -66,6 +66,8 @@ def get_filing_list():
             for tr in trs:
                 tds = tr.findAll('td')
                 if len(tds) > 0:
+                    if "RETURNED NO RESULTS" in tds[0].text:
+                        break
                     details = {
                         'name' : name,
                         'date' : tds[0].text.strip(),
