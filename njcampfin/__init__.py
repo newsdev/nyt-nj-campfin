@@ -83,3 +83,6 @@ def get_filing_list():
             break
 
     sys.stdout.write(json.dumps(results))
+
+if __name__ == '__main__':
+    get_filing_list()
