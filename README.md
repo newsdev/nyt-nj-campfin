@@ -12,22 +12,21 @@ get_filing_list > filings.json
 This command produces JSON of the following format:
 
 ```
-{candidate_name:
-  [{"name" : candidate_name,
+[{"name" : candidate_name,
   "date" : filing_date,
   "form" : form_type,
   "period" : filing_period,
   "amendment" : amendment_number,
   "doc_id" : document_id_from_download_url
-  }]
-}
+  }
+  ...]
+
 ```
 
 For example:
 
 ```
-{"LESNIAK, RAYMOND J":
-  [
+[
     {"date": "01/18/2017",
     "period": "0",
     "form": "D-1",
@@ -39,24 +38,21 @@ For example:
     "form": "D-1",
     "amendment": "0",
     "doc_id": "a9HjeNwNbRQ%3d",
-    "name": "LESNIAK, RAYMOND J"}
-  ],
- "GUADAGNO, KIMBERLY":
- [
-  {"date": "01/12/2017",
-  "period": "0",
-  "form": "D-1",
-  "amendment": "0",
-  "doc_id": "plBeOeEX704%3d",
-  "name": "GUADAGNO, KIMBERLY"},
-  {"date": "01/12/2017",
-  "period": "0",
-  "form": "DX",
-  "amendment": "0",
-  "doc_id": "%2bna3eeIdDWs%3d",
-  "name": "GUADAGNO, KIMBERLY"}
- ]
-}
+    "name": "LESNIAK, RAYMOND J"},
+    {"date": "01/12/2017",
+    "period": "0",
+    "form": "D-1",
+    "amendment": "0",
+    "doc_id": "plBeOeEX704%3d",
+    "name": "GUADAGNO, KIMBERLY"},
+    {"date": "01/12/2017",
+    "period": "0",
+    "form": "DX",
+    "amendment": "0",
+    "doc_id": "%2bna3eeIdDWs%3d",
+    "name": "GUADAGNO, KIMBERLY"}
+]
+
 ```
 
 ## Heads up
