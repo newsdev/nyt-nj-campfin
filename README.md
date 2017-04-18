@@ -58,3 +58,6 @@ For example:
  ]
 }
 ```
+
+## Heads up
+The website does not do well under load, I recommend against running this script frequently.
