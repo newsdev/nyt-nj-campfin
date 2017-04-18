@@ -10,7 +10,7 @@ def get_filing_list():
     #we have to put in a keyword-key conversion
 
     #this is candidate:list_of_filings
-    results = {}
+    results = []
 
     #hit front page to get __EVENTVALIDATION and __VIEWSTATE
     s = requests.session()
@@ -59,8 +59,7 @@ def get_filing_list():
         name = soup.find('span', {'id':"ContentPlaceHolder1_usrCommonDetails1_lblName"})
         if name:
             name = name.text
-            if name not in results:
-                results[name] = []
+
             #find documents
             trs = soup.find('table', {'id': "ContentPlaceHolder1_usrCommonDetails1_usrCommonGrid1_gvwData"}).findAll('tr')
             for tr in trs:
@@ -76,11 +75,13 @@ def get_filing_list():
                         'amendment' : tds[3].text.strip(),
                         'doc_id' : tds[4].a['href'].split("=")[-1]}
 
-                    results[name].append(details)
+                    results.append(details)
             
             time.sleep(1)
         else:
             break
+
+
 
     sys.stdout.write(json.dumps(results))
 
