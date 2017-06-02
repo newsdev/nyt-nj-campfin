@@ -3,6 +3,8 @@ Scrapers for NJ campaign finance data
 
 Currently just listing filings by candidates who have filed for governor in 2017.
 
+# ACTUALLY everything is broken right now because they changed the site and I haven't had time to fix it.
+
 ## Usage
 Dump JSON with info about governor's election filings:
 ```
