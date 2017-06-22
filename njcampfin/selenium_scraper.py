@@ -27,7 +27,7 @@ def find_next_page_button_index(elements):
             return i
     return -1
 
-def main(first_name, last_name)
+def main(first_name, last_name, year):
     path_to_chromedriver = '/Users/208301/chromedriver2' #TODO -> env var
     browser = webdriver.Chrome(executable_path = path_to_chromedriver)
 
@@ -37,6 +37,8 @@ def main(first_name, last_name)
 
     browser.find_element_by_id('txtFirstName').send_keys(first_name)
     browser.find_element_by_id('txtLastName').send_keys(last_name)
+    if (year is not None and year != ''):
+        browser.find_element_by_xpath("//select[@name='ctl00$ContentPlaceHolder1$usrCandidate1$ddlYear']/option[text()='{}']".format(year)).click()
 
     browser.find_element_by_id('btnSearch').click()
 
@@ -138,4 +140,4 @@ def main(first_name, last_name)
     sys.stdout.write(json.dumps(results))
 
 if __name__=='__main__':
-    sys.exit(main(sys.argv[1], sys.argv[2]))
+    sys.exit(main(sys.argv[1], sys.argv[2], sys.argv[3]))
