@@ -2,71 +2,140 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 import json
 import sys
+import time
 
-path_to_chromedriver = '/Users/208301/chromedriver2' #TODO -> env var
-browser = webdriver.Chrome(executable_path = path_to_chromedriver)
+def check_exists_by_id(id, driver):
+    try:
+        driver.find_element_by_id(id)
+    except NoSuchElementException:
+        return False
+    return True
 
-url = 'http://www.elec.state.nj.us/ELECReport/searchcandidate.aspx' #TODO -> env var, maybe?
+def check_exists_by_xpath(xpath, driver):
+    try:
+        driver.find_element_by_xpath(xpath)
+    except NoSuchElementException:
+        return False
+    return True
 
-browser.get(url)
+def find_next_page_button_index(elements):
+    for i in range(len(elements)):
+        if elements[i].text == ' > ':
+            return i
+    return -1
 
-browser.find_element_by_id('txtFirstName').send_keys("Phil")
-browser.find_element_by_id('txtLastName').send_keys("Murphy")
+def main(first_name, last_name)
+    path_to_chromedriver = '/Users/208301/chromedriver2' #TODO -> env var
+    browser = webdriver.Chrome(executable_path = path_to_chromedriver)
 
-browser.find_element_by_id('btnSearch').click()
+    url = 'http://www.elec.state.nj.us/ELECReport/searchcandidate.aspx' #TODO -> env var, maybe?
 
-docs_table_xpath = "//div[@id='VisibleReportContentctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_ctl09']//table[@cols='6']"
-names_table_xpath = "//table[@id='ContentPlaceHolder1_usrCommonGrid1_gvwData']"
-names_page_links_template = "ContentPlaceHolder1_usrCommonGrid1_rptPaging_LinkButton1_{}"
+    browser.get(url)
 
-wait = WebDriverWait(browser, 10)
-wait.until(
-    EC.presence_of_element_located((By.XPATH, docs_table_xpath))
-)
+    browser.find_element_by_id('txtFirstName').send_keys(first_name)
+    browser.find_element_by_id('txtLastName').send_keys(last_name)
 
-names_table = browser.find_element_by_xpath(names_table_xpath)
-names_rows = names_table.find_elements_by_xpath("./tbody/tr")
-results = []
+    browser.find_element_by_id('btnSearch').click()
 
-for i in range(1, len(names_rows)):
-    names_table = browser.find_element_by_xpath(names_table_xpath)
-    names_rows = names_table.find_elements_by_xpath("./tbody/tr")
-    name_row = names_rows[i]
+    docs_table_xpath =  "//div[@id='VisibleReportContentctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_ctl09']//table[@cols='6']"
+    docs_table_or_norecords_xpath = "//div[@id='VisibleReportContentctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_ctl09'][.//table[@cols='6'] or .//div/text()='No Records Found']"
+    names_table_xpath = "//table[@id='ContentPlaceHolder1_usrCommonGrid1_gvwData']"
+    names_page_links_template = "ContentPlaceHolder1_usrCommonGrid1_rptPaging_LinkButton1_{}"
+    page_controls_xpath = "//a[@class='bodytext']"
+    date_sort_controls_xpath = "//td/a[@tabindex]"
 
-    name = name_row.find_element_by_xpath("./td/a").text
-    name_items = name_row.find_elements_by_xpath("./td")
-    location = name_items[1].text
-    party = name_items[2].text
-    office_or_type = name_items[3].text
-    election_type = name_items[4].text
-    year = name_items[5].text
-    name_row.click()
+    if check_exists_by_xpath(page_controls_xpath, browser):
+        page_controls = browser.find_elements_by_xpath(page_controls_xpath)
+    else:
+        page_controls = None
 
-    wait = WebDriverWait(browser, 10)
-    wait.until(
-        EC.presence_of_element_located((By.XPATH, docs_table_xpath))
-    )
+    results = []
+    while True:
+        wait = WebDriverWait(browser, 300)
+        wait.until(
+            EC.presence_of_element_located((By.XPATH, docs_table_or_norecords_xpath))
+        )
 
-    docs_table = browser.find_element_by_xpath(docs_table_xpath)
-    filing_rows = docs_table.find_elements_by_xpath("./tbody/tr")
-    for filing_row in filing_rows[2:]:
-        filing_items = filing_row.find_elements_by_xpath(".//div")
-        file_element = filing_row.find_elements_by_xpath(".//a")
-        details = {
-            'name': name.strip(),
-            'location': location,
-            'party': party,
-            'office_or_type': office_or_type,
-            'election_type': election_type,
-            'year': year,
-            'date': filing_items[0].text.strip(),
-            'form': filing_items[1].text.strip(),
-            'period': filing_items[2].text.strip(),
-            'amendment' : filing_items[3].text.strip(),
-        }
+        names_table = browser.find_element_by_xpath(names_table_xpath)
+        names_rows = names_table.find_elements_by_xpath("./tbody/tr")
 
-        results.append(details)
+        for i in range(1, len(names_rows)):
+            names_table = browser.find_element_by_xpath(names_table_xpath)
+            names_rows = names_table.find_elements_by_xpath("./tbody/tr")
+            name_row = names_rows[i]
 
-sys.stdout.write(json.dumps(results))
+            name = name_row.find_element_by_xpath("./td/a").text
+            name_items = name_row.find_elements_by_xpath("./td")
+            location = name_items[1].text
+            party = name_items[2].text
+            office_or_type = name_items[3].text
+            election_type = name_items[4].text
+            year = name_items[5].text
+            name_row.click()
+
+            wait = WebDriverWait(browser, 300)
+            wait.until(
+                EC.presence_of_element_located((By.XPATH, docs_table_or_norecords_xpath))
+            )
+
+            if (check_exists_by_xpath("//div[@id='VisibleReportContentctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_ctl09']//div[text()='No Records Found']", browser)):
+                print("No records, continuing")
+                continue
+
+            browser.find_element_by_xpath(date_sort_controls_xpath).click()
+            wait = WebDriverWait(browser, 300)
+            wait.until(EC.presence_of_element_located((By.XPATH, "//img[@src='/ELECReport/Reserved.ReportViewerWebControl.axd?OpType=Resource&Version=12.0.2402.20&Name=Microsoft.ReportingServices.Rendering.HtmlRenderer.RendererResources.sortAsc.gif']")))
+            wait = WebDriverWait(browser, 300)
+            time.sleep(0.5)
+            wait.until(
+                EC.invisibility_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_AsyncWait"))
+                #EC.element_to_be_clickable((By.XPATH, date_sort_controls_xpath))
+            )
+            browser.find_element_by_xpath(date_sort_controls_xpath).click()
+            wait = WebDriverWait(browser, 300)
+            wait.until(
+                EC.presence_of_element_located((By.XPATH, "//img[@src='/ELECReport/Reserved.ReportViewerWebControl.axd?OpType=Resource&Version=12.0.2402.20&Name=Microsoft.ReportingServices.Rendering.HtmlRenderer.RendererResources.sortDesc.gif']"))
+            )
+            time.sleep(0.5)
+            wait = WebDriverWait(browser, 300)
+            wait.until(
+                EC.invisibility_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_AsyncWait"))
+            )
+
+            docs_table = browser.find_element_by_xpath(docs_table_xpath)
+            filing_rows = docs_table.find_elements_by_xpath("./tbody/tr")
+            for filing_row in filing_rows[2:]:
+                filing_items = filing_row.find_elements_by_xpath(".//div")
+                file_element = filing_row.find_elements_by_xpath(".//a")
+                details = {
+                    'name': name.strip(),
+                    'location': location,
+                    'party': party,
+                    'office_or_type': office_or_type,
+                    'election_type': election_type,
+                    'year': year,
+                    'date': filing_items[0].text.strip(),
+                    'form': filing_items[1].text.strip(),
+                    'period': filing_items[2].text.strip(),
+                    'amendment' : filing_items[3].text.strip(),
+                }
+
+                results.append(details)
+        
+        if check_exists_by_xpath(page_controls_xpath, browser):
+            page_controls = browser.find_elements_by_xpath(page_controls_xpath)
+        else:
+            page_controls = None
+
+        if page_controls == None or find_next_page_button_index(page_controls) == -1:
+            break
+        else:
+            page_controls[find_next_page_button_index(page_controls)].click()
+
+    sys.stdout.write(json.dumps(results))
+
+if __name__=='__main__':
+    sys.exit(main(sys.argv[1], sys.argv[2]))

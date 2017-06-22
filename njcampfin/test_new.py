@@ -13,6 +13,7 @@ s.headers.update({
     'Cookie': 'ASP.NET_SessionId=2w4r4q25gvy03j2vxuejt2u4'
 })
 r = s.get('http://www.elec.state.nj.us/ELECReport/SearchCandidate.aspx')
+cookies = r.cookies
 soup = BeautifulSoup(r.text)
 viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
 viewstategenerator = soup.find('input', {'id':'__VIEWSTATEGENERATOR'})['value']
@@ -36,7 +37,7 @@ data = {
     '__VIEWSTATEGENERATOR': viewstategenerator
 }
 
-r = s.post('http://www.elec.state.nj.us/ELECReport/SearchCandidate.aspx', data=data)
+r = s.post('http://www.elec.state.nj.us/ELECReport/SearchCandidate.aspx', data=data, cookies=cookies)
 soup = BeautifulSoup(r.text)
 
 path = os.path.abspath('temp.html')
@@ -52,7 +53,7 @@ data2 = {
     'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ReportControl$ctl03': None, 
     'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ReportControl$ctl02': None, 
     'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ToggleParam$collapse': 'false', 
-    '__EVENTARGUMENT': 'Link$1', 
+    '__EVENTARGUMENT': 'Link$0', 
     'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$VisibilityState$ctl00': 
     'ReportPage', 
     '__VIEWSTATEGENERATOR': viewstategenerator,
@@ -72,7 +73,7 @@ data2 = {
     'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl03$ctl01': None
 }
 
-r = s.post('http://www.elec.state.nj.us/ELECReport/SearchCandidate.aspx', data=data2)
+r = s.post('http://www.elec.state.nj.us/ELECReport/SearchCandidate.aspx', data=data2, cookies=cookies)
 soup = BeautifulSoup(r.text)
 results = soup.findAll('table')
 for elem in soup(text=re.compile(r'Date Recieved')):
@@ -87,41 +88,51 @@ with open(path, 'w') as f:
 viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
 viewstategenerator = soup.find('input', {'id':'__VIEWSTATEGENERATOR'})['value']
 
-data3 = {
-    'ctl00$ScriptManager1': 'ctl00$ScriptManager1|ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$Reserved_AsyncLoadTarget',
+data3  = {
+    'ctl00$ScriptManager1':'ctl00$ScriptManager1|ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ReportControl',
     'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl03$ctl00': None,
     'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl03$ctl01': None,
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl05$ctl00$CurrentPage': None,
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ReportControl$ctl03': None, 
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ReportControl$ctl02': None, 
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ToggleParam$store': None,
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ToggleParam$collapse': 'false', 
-    '__EVENTARGUMENT': None, 
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$VisibilityState$ctl00': 'None', 
-    '__VIEWSTATEGENERATOR': viewstategenerator,
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl07$collapse': 'false', 
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl07$store': None,
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ReportControl$ctl04': '100',
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl08$ClientClickedId': None, 
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ToggleParam$store': None,
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ScrollPosition': None,
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl05$ctl00$CurrentPage': None,
-    '__EVENTTARGET': 'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$Reserved_AsyncLoadTarget',
-    '__VIEWSTATE': viewstate,
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl10':'ltr',
     'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl11':'standards',
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl10': 'ltr',
-    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$AsyncWait$HiddenCancelField': 'False',
-    '__ASYNCPOST': 'true'
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$AsyncWait$HiddenCancelField':'False',
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ToggleParam$store': None,
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ToggleParam$collapse':'false',
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl05$ctl00$CurrentPage':'1',
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl08$ClientClickedId': None,
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl07$store': None,
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl07$collapse': 'false',
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$VisibilityState$ctl00': 'ReportPage',
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ScrollPosition': None,
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ReportControl$ctl02': None,
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ReportControl$ctl03': None,
+    'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ReportControl$ctl04': '100',
+    '__EVENTTARGET': 'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl09$ReportControl',
+    '__EVENTARGUMENT': None,
+    '__VIEWSTATE': viewstate,
+    '__VIEWSTATEGENERATOR': viewstategenerator,
+    '__ASYNCPOST':'true',
+    '': ""
 }
 
 
 s.headers.update({
     'X-MicrosoftAjax': 'Delta=true',
-    'X-Requested-With': 'XMLHttpRequest'
+    'X-Requested-With': 'XMLHttpRequest',
+    'Referer': 'http://www.elec.state.nj.us/ELECReport/searchcandidate.aspx',
+    'Host':'www.elec.state.nj.us',
+    'Origin':'http://www.elec.state.nj.us',
+    'Accept':'*/*',
+    'Accept-Encoding':'gzip, deflate',
+    'Accept-Language':'en-US,en;q=0.8',
+    'Cache-Control':'no-cache',
+    'Connection':'keep-alive',
+    'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8'
 })
 
-r = s.post('http://www.elec.state.nj.us/ELECReport/SearchCandidate.aspx', data=data3)
+r = s.post('http://www.elec.state.nj.us/ELECReport/SearchCandidate.aspx', data=data3, cookies=cookies)
 soup = BeautifulSoup(r.text)
+print(r.text[:5000])
+
 results = soup.findAll('table')
 for elem in soup(text=re.compile(r'Date Recieved')):
     print(elem.parent)
