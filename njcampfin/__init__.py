@@ -1,89 +1,148 @@
-import requests
-from bs4 import BeautifulSoup
-import time
-import sys
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 import json
+import sys
+import time
 
-def get_filing_list():
-    #TODO make this take parameters, right now just does 2017 governor
-    #with the exception of year, the fields have ids, so to do parameters
-    #we have to put in a keyword-key conversion
+def check_exists_by_id(id, driver):
+    try:
+        driver.find_element_by_id(id)
+    except NoSuchElementException:
+        return False
+    return True
 
-    #this is candidate:list_of_filings
+def check_exists_by_xpath(xpath, driver):
+    try:
+        driver.find_element_by_xpath(xpath)
+    except NoSuchElementException:
+        return False
+    return True
+
+def find_next_page_button_index(elements):
+    for i in range(len(elements)):
+        if elements[i].text == ' > ':
+            return i
+    return -1
+
+def get_filing_list(first_name, last_name, year, office):
+    path_to_chromedriver = '/usr/local/bin/chromedriver' #TODO -> env var
+    browser = webdriver.Chrome(executable_path = path_to_chromedriver)
+
+    url = 'http://www.elec.state.nj.us/ELECReport/searchcandidate.aspx' #TODO -> env var, maybe?
+
+    browser.get(url)
+
+    browser.find_element_by_id('txtFirstName').send_keys(first_name)
+    browser.find_element_by_id('txtLastName').send_keys(last_name)
+    if (year is not None and year != ''):
+        browser.find_element_by_xpath("//select[@name='ctl00$ContentPlaceHolder1$usrCandidate1$ddlYear']/option[text()='{}']".format(year)).click()
+    if (office is not None and office != ''):
+        browser.find_element_by_xpath("//select[@name='ctl00$ContentPlaceHolder1$usrCandidate1$ddlOffice']/option[text()='{}']".format(office)).click()
+
+    browser.find_element_by_id('btnSearch').click()
+
+    docs_table_xpath =  "//div[@id='VisibleReportContentctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_ctl09']//table[@cols='6']"
+    docs_table_or_norecords_xpath = "//div[@id='VisibleReportContentctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_ctl09'][.//table[@cols='6'] or .//div/text()='No Records Found']"
+    names_table_xpath = "//table[@id='ContentPlaceHolder1_usrCommonGrid1_gvwData']"
+    names_page_links_template = "ContentPlaceHolder1_usrCommonGrid1_rptPaging_LinkButton1_{}"
+    page_controls_xpath = "//a[@class='bodytext']"
+    date_sort_controls_xpath = "//td/a[@tabindex]"
+
+    if check_exists_by_xpath(page_controls_xpath, browser):
+        page_controls = browser.find_elements_by_xpath(page_controls_xpath)
+    else:
+        page_controls = None
+
     results = []
-
-    #hit front page to get __EVENTVALIDATION and __VIEWSTATE
-    s = requests.session()
-    r = s.get('http://www.elec.state.nj.us/ELECReport/SearchCandidate.aspx')
-    soup = BeautifulSoup(r.text)
-    viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
-    eventvalidation = soup.find('input', {'id':'__EVENTVALIDATION'})['value']
-
-    #hit governor list page to get new fresh values of __EVENTVALIDATION and __VIEWSTATE
-    #TODO will fail if there are more than 25, paginate.
-    data = {"__EVENTTARGET":None,
-        "__EVENTARGUMENT":None,
-        "ctl00$ContentPlaceHolder1$usrSearch1$Committee":"Candidate",
-        "ctl00$ContentPlaceHolder1$usrSearch1$txtFirstName":None,
-        "ctl00$ContentPlaceHolder1$usrSearch1$txtMI":None,
-        "ctl00$ContentPlaceHolder1$usrSearch1$txtLastName":None,
-        "ctl00$ContentPlaceHolder1$usrSearch1$txtSuffix":None,
-        "ctl00$ContentPlaceHolder1$usrSearch1$ddlOffice":"0",
-        "ctl00$ContentPlaceHolder1$usrSearch1$Location":"Location1",
-        "ctl00$ContentPlaceHolder1$usrSearch1$ddlLocation1":None,
-        "ctl00$ContentPlaceHolder1$usrSearch1$ddlParty":"ALL",
-        "ctl00$ContentPlaceHolder1$usrSearch1$ddlElection":"ALL",
-        "ctl00$ContentPlaceHolder1$usrSearch1$ddlYear":"2017",
-        "ctl00$ContentPlaceHolder1$usrSearch1$btnSearch":"Search",
-        '__VIEWSTATE':viewstate,
-        '__EVENTVALIDATION':eventvalidation}
-    r = s.post('http://www.elec.state.nj.us/ELECReport/SearchCandidate.aspx', data=data)
-
-    soup = BeautifulSoup(r.text)
-    viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
-    eventvalidation = soup.find('input', {'id':'__EVENTVALIDATION'})['value']
-
-    #hit links until we find one with no name, that means it's an error and we're done!
-    i = 0
     while True:
-        data = {'__EVENTTARGET':'ctl00$ContentPlaceHolder1$usrCommonGrid1$gvwData',
-            '__EVENTARGUMENT':'Link${}'.format(i),
-            '__LASTFOCUS':None,
-            '__VIEWSTATE':viewstate,
-            '__EVENTVALIDATION':eventvalidation,
-            'ctl00$ContentPlaceHolder1$usrCommonGrid1$ddlRowsPerPage':'25'}
+        wait = WebDriverWait(browser, 300)
+        wait.until(
+            EC.presence_of_element_located((By.XPATH, docs_table_or_norecords_xpath))
+        )
 
-        r = s.post('http://www.elec.state.nj.us/ELECReport/SearchCandidate.aspx', data=data)
-        soup = BeautifulSoup(r.text)
-        i += 1
-        name = soup.find('span', {'id':"ContentPlaceHolder1_usrCommonDetails1_lblName"})
-        if name:
-            name = name.text
+        names_table = browser.find_element_by_xpath(names_table_xpath)
+        names_rows = names_table.find_elements_by_xpath("./tbody/tr")
 
-            #find documents
-            trs = soup.find('table', {'id': "ContentPlaceHolder1_usrCommonDetails1_usrCommonGrid1_gvwData"}).findAll('tr')
-            for tr in trs:
-                tds = tr.findAll('td')
-                if len(tds) > 0:
-                    if "RETURNED NO RESULTS" in tds[0].text:
-                        break
-                    details = {
-                        'name' : name,
-                        'date' : tds[0].text.strip(),
-                        'form' : tds[1].text.strip(),
-                        'period' : tds[2].text.strip(),
-                        'amendment' : tds[3].text.strip(),
-                        'doc_id' : tds[4].a['href'].split("=")[-1]}
+        for i in range(1, len(names_rows)):
+            names_table = browser.find_element_by_xpath(names_table_xpath)
+            names_rows = names_table.find_elements_by_xpath("./tbody/tr")
+            name_row = names_rows[i]
 
-                    results.append(details)
-            
-            time.sleep(1)
+            name = name_row.find_element_by_xpath("./td/a").text
+            name_items = name_row.find_elements_by_xpath("./td")
+            location = name_items[1].text
+            party = name_items[2].text
+            office_or_type = name_items[3].text
+            election_type = name_items[4].text
+            year = name_items[5].text
+            name_row.click()
+
+            wait = WebDriverWait(browser, 300)
+            wait.until(
+                EC.presence_of_element_located((By.XPATH, docs_table_or_norecords_xpath))
+            )
+
+            if (check_exists_by_xpath("//div[@id='VisibleReportContentctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_ctl09']//div[text()='No Records Found']", browser)):
+                print("No records, continuing")
+                continue
+
+            browser.find_element_by_xpath(date_sort_controls_xpath).click()
+            wait = WebDriverWait(browser, 300)
+            wait.until(EC.presence_of_element_located((By.XPATH, "//img[@src='/ELECReport/Reserved.ReportViewerWebControl.axd?OpType=Resource&Version=12.0.2402.20&Name=Microsoft.ReportingServices.Rendering.HtmlRenderer.RendererResources.sortAsc.gif']")))
+            wait = WebDriverWait(browser, 300)
+            time.sleep(0.5)
+            wait.until(
+                EC.invisibility_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_AsyncWait"))
+                #EC.element_to_be_clickable((By.XPATH, date_sort_controls_xpath))
+            )
+            browser.find_element_by_xpath(date_sort_controls_xpath).click()
+            wait = WebDriverWait(browser, 300)
+            wait.until(
+                EC.presence_of_element_located((By.XPATH, "//img[@src='/ELECReport/Reserved.ReportViewerWebControl.axd?OpType=Resource&Version=12.0.2402.20&Name=Microsoft.ReportingServices.Rendering.HtmlRenderer.RendererResources.sortDesc.gif']"))
+            )
+            time.sleep(0.5)
+            wait = WebDriverWait(browser, 300)
+            wait.until(
+                EC.invisibility_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_AsyncWait"))
+            )
+
+            docs_table = browser.find_element_by_xpath(docs_table_xpath)
+            filing_rows = docs_table.find_elements_by_xpath("./tbody/tr")
+            for filing_row in filing_rows[2:]:
+                filing_items = filing_row.find_elements_by_xpath(".//div")
+                file_element = filing_row.find_elements_by_xpath(".//a")
+                details = {
+                    'name': name.strip(),
+                    'location': location,
+                    'party': party,
+                    'office_or_type': office_or_type,
+                    'election_type': election_type,
+                    'year': year,
+                    'date': filing_items[0].text.strip(),
+                    'form': filing_items[1].text.strip(),
+                    'period': filing_items[2].text.strip(),
+                    'amendment' : filing_items[3].text.strip(),
+                }
+
+                results.append(details)
+        
+        if check_exists_by_xpath(page_controls_xpath, browser):
+            page_controls = browser.find_elements_by_xpath(page_controls_xpath)
         else:
+            page_controls = None
+
+        if page_controls == None or find_next_page_button_index(page_controls) == -1:
             break
-
-
+        else:
+            page_controls[find_next_page_button_index(page_controls)].click()
 
     sys.stdout.write(json.dumps(results))
 
-if __name__ == '__main__':
-    get_filing_list()
+def main():
+    get_filing_list(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+
+if __name__=='__main__':
+    main()
