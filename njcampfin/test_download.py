@@ -18,7 +18,7 @@ soup = BeautifulSoup(r.text)
 viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
 viewstategenerator = soup.find('input', {'id':'__VIEWSTATEGENERATOR'})['value']
 
-data4 = {
+data = {
     'ctl00$ContentPlaceHolder1$txtEntityId': '366087',
     'ctl00$ContentPlaceHolder1$rdoSelection': 'CD',
     'ctl00$ContentPlaceHolder1$BITSReportViewer1$reportViewer1$ctl03$ctl00': None,
@@ -44,7 +44,7 @@ data4 = {
     '__VIEWSTATEGENERATOR': viewstategenerator
 }
 
-r = s.post('http://www.elec.state.nj.us//ELECReport/SummaryData.aspx?Entity=tchL3XfmvD8%3d', data=data4)
+r = s.post('http://www.elec.state.nj.us//ELECReport/SummaryData.aspx?Entity=tchL3XfmvD8%3d', data=data)
 if r.history:
     print "Request was redirected"
     for resp in r.history:

@@ -3,3 +3,10 @@
 __pycache__
 .vscode/
 .DS_STORE
+*.env
+dev.
+nj_campfin_scraped.json
+out.json
+temp_filing.pdf
+build/
+dist/

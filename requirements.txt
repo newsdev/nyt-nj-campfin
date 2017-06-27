@@ -7,5 +7,6 @@ idna==2.5
 packaging==16.8
 pyparsing==2.1.10
 selenium==3.4.3
+schedule=0.4.3
 six==1.10.0
 urllib3==1.21.1
