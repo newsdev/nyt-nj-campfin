@@ -11,6 +11,7 @@ import os
 import boto3
 import urllib.request
 from requests import get
+import pdb
 
 bucket = os.environ['BUCKET_NAME']
 folder = os.environ['FOLDER_PATH']
@@ -55,12 +56,12 @@ def upload_json_to_s3(output_json, bucket, folder, filename):
 
 def get_previously_scraped_from_s3(output_filename):
     url = os.environ['AWS_URL_PREFIX'] + '/' + os.environ['BUCKET_NAME'] + '/' + os.environ['FOLDER_PATH'] + output_filename
-    data = {}
+    data = []
     try:
         with urllib.request.urlopen(url) as json_file:
             data = json.loads(json_file.read().decode())
     except urllib.error.HTTPError:
-        return {}
+        return []
     return data
 
 def create_filing_name_from_json(filing_json):
@@ -87,6 +88,13 @@ def get_filing_list(first_name, last_name, year, office, outfile):
     previously_scraped = []
     if outfile is not None and outfile != '':
         previously_scraped = get_previously_scraped_from_s3(outfile.split('/')[-1])
+
+    previously_scraped_no_urls = []
+    for old_details in previously_scraped:
+        copy = dict(old_details)
+        if 'url' in copy:
+            del copy['url']
+        previously_scraped_no_urls.append(copy)
 
     #path_to_chromedriver = '/usr/local/bin/chromedriver' #TODO -> env var
     path_to_chromedriver = os.environ['PATH_TO_CHROMEDRIVER']
@@ -126,10 +134,6 @@ def get_filing_list(first_name, last_name, year, office, outfile):
 
         names_table = browser.find_element_by_xpath(names_table_xpath)
         names_rows = names_table.find_elements_by_xpath("./tbody/tr")
-        if check_exists_by_xpath("//a[text()='Summary Data']", browser):
-            summary_data_link = browser.find_element_by_xpath("//a[text()='Summary Data']").get_attribute("href")
-        else:
-            summary_data_link = ''
 
         for i in range(1, len(names_rows)):
             names_table = browser.find_element_by_xpath(names_table_xpath)
@@ -176,12 +180,16 @@ def get_filing_list(first_name, last_name, year, office, outfile):
 
             docs_table = browser.find_element_by_xpath(docs_table_xpath)
             filing_rows = docs_table.find_elements_by_xpath("./tbody/tr")
+            if check_exists_by_xpath("//a[text()='Summary Data']", browser):
+                summary_data_link = browser.find_element_by_xpath("//a[text()='Summary Data']").get_attribute("href")
+            else:
+                summary_data_link = ''
             for filing_row in filing_rows[2:]:
                 filing_items = filing_row.find_elements_by_xpath(".//div")
                 file_element = filing_row.find_element_by_xpath(".//a")
                 details = {
                     'name': name.strip(),
-                    'summary_link': summary_data_link
+                    'summary_link': summary_data_link,
                     'location': location,
                     'party': party,
                     'office_or_type': office_or_type,
@@ -192,14 +200,19 @@ def get_filing_list(first_name, last_name, year, office, outfile):
                     'period': filing_items[2].text.strip(),
                     'amendment' : filing_items[3].text.strip(),
                 }
-                
-                
+
                 if outfile is not None and outfile != '' and details not in previously_scraped:
-                    details['url'] = ''
+                    if details in previously_scraped_no_urls:
+                        prev_details_index = previously_scraped_no_urls.index(details)
+                        details['url'] = previously_scraped[prev_details_index]['url']
+                    else:
+                        details['url'] = ''
                     if details not in previously_scraped:
-                        file_url = get_filing_and_upload_to_s3(file_element.get_attribute("href"), url, bucket, folder, create_filing_name_from_json(details))
-                        print(file_url)
-                        details['url'] = file_url
+                        #print("Downloading...")
+                        #file_url = get_filing_and_upload_to_s3(file_element.get_attribute("href"), url, bucket, folder, create_filing_name_from_json(details))
+                        #print(file_url)
+                        #details['url'] = file_url
+                        pass
                 else:
                     details['url'] = ''
 
