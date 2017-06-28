@@ -68,8 +68,10 @@ def create_filing_name_from_json(filing_json):
     name = ''.join(x for x in filing_json['name'] if x.isalnum())
     date = ''.join(x for x in filing_json['date'] if x.isalnum())
     form = ''.join(x for x in filing_json['form'] if x.isalnum())
+    period = ''.join(x for x in filing_json['period'] if x.isalnum())
+    amend = ''.join(x for x in filing_json['amend'] if x.isalnum())
 
-    out = name + date + form + '.pdf'
+    out = name + date + form + period + amend + '.pdf'
     return out
 
 def get_filing_and_upload_to_s3(url, referer_url, bucket, folder, filename):
@@ -83,7 +85,7 @@ def get_filing_and_upload_to_s3(url, referer_url, bucket, folder, filename):
     file_url = os.environ['AWS_URL_PREFIX'] + '/' + os.environ['BUCKET_NAME'] + '/' + os.environ['FOLDER_PATH'] + filename
     return file_url
 
-def get_filing_list(first_name, last_name, year, office, outfile):
+def get_filing_list(first_name, last_name, year, office, outfile, get_filings, upload_pdfs):
     print("Began scraping with params {} {} {} {} {}".format(first_name, last_name, year, office, outfile))
     previously_scraped = []
     if outfile is not None and outfile != '':
@@ -149,44 +151,81 @@ def get_filing_list(first_name, last_name, year, office, outfile):
             year = name_items[5].text
             name_row.click()
 
-            wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
-            wait.until(
-                EC.presence_of_element_located((By.XPATH, docs_table_or_norecords_xpath))
-            )
+            try:
+                wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
+                wait.until(
+                    EC.presence_of_element_located((By.XPATH, docs_table_or_norecords_xpath))
+                )
+            except selenium.common.exceptions.TimeoutException:
+                print("TIMEOUT EXCEPTION: " + name)
 
             if (check_exists_by_xpath("//div[@id='VisibleReportContentctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_ctl09']//div[text()='No Records Found']", browser)):
                 print("No records, continuing")
-                continue
+                if get_filings:
+                    continue
 
-            browser.find_element_by_xpath(date_sort_controls_xpath).click()
-            wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
-            wait.until(EC.presence_of_element_located((By.XPATH, "//img[@src='/ELECReport/Reserved.ReportViewerWebControl.axd?OpType=Resource&Version=12.0.2402.20&Name=Microsoft.ReportingServices.Rendering.HtmlRenderer.RendererResources.sortAsc.gif']")))
-            wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
-            time.sleep(0.5)
-            wait.until(
-                EC.invisibility_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_AsyncWait"))
-                #EC.element_to_be_clickable((By.XPATH, date_sort_controls_xpath))
-            )
-            browser.find_element_by_xpath(date_sort_controls_xpath).click()
-            wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
-            wait.until(
-                EC.presence_of_element_located((By.XPATH, "//img[@src='/ELECReport/Reserved.ReportViewerWebControl.axd?OpType=Resource&Version=12.0.2402.20&Name=Microsoft.ReportingServices.Rendering.HtmlRenderer.RendererResources.sortDesc.gif']"))
-            )
-            time.sleep(0.5)
-            wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
-            wait.until(
-                EC.invisibility_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_AsyncWait"))
-            )
-
-            docs_table = browser.find_element_by_xpath(docs_table_xpath)
-            filing_rows = docs_table.find_elements_by_xpath("./tbody/tr")
             if check_exists_by_xpath("//a[text()='Summary Data']", browser):
                 summary_data_link = browser.find_element_by_xpath("//a[text()='Summary Data']").get_attribute("href")
             else:
                 summary_data_link = ''
-            for filing_row in filing_rows[2:]:
-                filing_items = filing_row.find_elements_by_xpath(".//div")
-                file_element = filing_row.find_element_by_xpath(".//a")
+
+            if get_filings:
+                browser.find_element_by_xpath(date_sort_controls_xpath).click()
+                wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
+                wait.until(EC.presence_of_element_located((By.XPATH, "//img[@src='/ELECReport/Reserved.ReportViewerWebControl.axd?OpType=Resource&Version=12.0.2402.20&Name=Microsoft.ReportingServices.Rendering.HtmlRenderer.RendererResources.sortAsc.gif']")))
+                wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
+                time.sleep(0.5)
+                wait.until(
+                    EC.invisibility_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_AsyncWait"))
+                    #EC.element_to_be_clickable((By.XPATH, date_sort_controls_xpath))
+                )
+                browser.find_element_by_xpath(date_sort_controls_xpath).click()
+                wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
+                wait.until(
+                    EC.presence_of_element_located((By.XPATH, "//img[@src='/ELECReport/Reserved.ReportViewerWebControl.axd?OpType=Resource&Version=12.0.2402.20&Name=Microsoft.ReportingServices.Rendering.HtmlRenderer.RendererResources.sortDesc.gif']"))
+                )
+                time.sleep(0.5)
+                wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
+                wait.until(
+                    EC.invisibility_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_AsyncWait"))
+                )
+
+                docs_table = browser.find_element_by_xpath(docs_table_xpath)
+                filing_rows = docs_table.find_elements_by_xpath("./tbody/tr")
+                for filing_row in filing_rows[2:]:
+                    filing_items = filing_row.find_elements_by_xpath(".//div")
+                    file_element = filing_row.find_element_by_xpath(".//a")
+                    details = {
+                        'name': name.strip(),
+                        'summary_link': summary_data_link,
+                        'location': location,
+                        'party': party,
+                        'office_or_type': office_or_type,
+                        'election_type': election_type,
+                        'year': year,
+                        'date': filing_items[0].text.strip(),
+                        'form': filing_items[1].text.strip(),
+                        'period': filing_items[2].text.strip(),
+                        'amendment' : filing_items[3].text.strip(),
+                    }
+
+                    if outfile is not None and outfile != '' and details not in previously_scraped:
+                        if details in previously_scraped_no_urls:
+                            prev_details_index = previously_scraped_no_urls.index(details)
+                            details['url'] = previously_scraped[prev_details_index]['url']
+                        else:
+                            details['url'] = ''
+                        if details not in previously_scraped and upload_pdfs:
+                            print("Downloading...")
+                            file_url = get_filing_and_upload_to_s3(file_element.get_attribute("href"), url, bucket, folder, create_filing_name_from_json(details))
+                            print(file_url)
+                            details['url'] = file_url
+                            pass
+                    else:
+                        details['url'] = ''
+
+                    results.append(details)
+            else:
                 details = {
                     'name': name.strip(),
                     'summary_link': summary_data_link,
@@ -195,27 +234,7 @@ def get_filing_list(first_name, last_name, year, office, outfile):
                     'office_or_type': office_or_type,
                     'election_type': election_type,
                     'year': year,
-                    'date': filing_items[0].text.strip(),
-                    'form': filing_items[1].text.strip(),
-                    'period': filing_items[2].text.strip(),
-                    'amendment' : filing_items[3].text.strip(),
                 }
-
-                if outfile is not None and outfile != '' and details not in previously_scraped:
-                    if details in previously_scraped_no_urls:
-                        prev_details_index = previously_scraped_no_urls.index(details)
-                        details['url'] = previously_scraped[prev_details_index]['url']
-                    else:
-                        details['url'] = ''
-                    if details not in previously_scraped:
-                        #print("Downloading...")
-                        #file_url = get_filing_and_upload_to_s3(file_element.get_attribute("href"), url, bucket, folder, create_filing_name_from_json(details))
-                        #print(file_url)
-                        #details['url'] = file_url
-                        pass
-                else:
-                    details['url'] = ''
-
                 results.append(details)
         
         if check_exists_by_xpath(page_controls_xpath, browser):
@@ -235,8 +254,8 @@ def get_filing_list(first_name, last_name, year, office, outfile):
         sys.stdout.write(json.dumps(results))
 
 def main():
-    get_filing_list(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
-    schedule.every(6).hours.do(get_filing_list, sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+    get_filing_list(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6].lower() == 'true', sys.argv[7].lower() == 'true')
+    schedule.every(6).hours.do(get_filing_list, sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[7].lower() == 'true', sys.argv[7].lower() == 'true')
     while True:
         schedule.run_pending()
         time.sleep(1)
