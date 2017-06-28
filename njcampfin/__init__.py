@@ -1,4 +1,6 @@
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -149,14 +151,18 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
             office_or_type = name_items[3].text
             election_type = name_items[4].text
             year = name_items[5].text
-            name_row.click()
+
+            try:
+                name_row.click()
+            except WebDriverException:
+                print(" ".join[name, location, party, office_or_type, election_type, year] + " FAILED")
 
             try:
                 wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
                 wait.until(
                     EC.presence_of_element_located((By.XPATH, docs_table_or_norecords_xpath))
                 )
-            except selenium.common.exceptions.TimeoutException:
+            except TimeoutException:
                 print("TIMEOUT EXCEPTION: " + name)
 
             if (check_exists_by_xpath("//div[@id='VisibleReportContentctl00_ContentPlaceHolder1_BITSReportViewer1_reportViewer1_ctl09']//div[text()='No Records Found']", browser)):
