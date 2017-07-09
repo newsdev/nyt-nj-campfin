@@ -13,7 +13,7 @@ import os
 import boto3
 import urllib.request
 from requests import get
-import pdb
+import csv
 
 bucket = os.environ['BUCKET_NAME']
 folder = os.environ['FOLDER_PATH']
@@ -87,8 +87,60 @@ def get_filing_and_upload_to_s3(url, referer_url, bucket, folder, filename):
     file_url = os.environ['AWS_URL_PREFIX'] + '/' + os.environ['BUCKET_NAME'] + '/' + os.environ['FOLDER_PATH'] + filename
     return file_url
 
-def get_filing_list(first_name, last_name, year, office, outfile, get_filings, upload_pdfs):
+def advance_to_page(browser, page_controls_xpath, page_num):
+    while True:
+        if check_exists_by_xpath(page_controls_xpath, browser):
+            page_controls = browser.find_elements_by_xpath(page_controls_xpath)
+        else:
+            page_controls = None
+        advance_several = -1
+        for i in range(len(page_controls)):
+            if page_controls[i].text.strip() == str(page_num):
+                page_controls[i].click()
+                return
+            elif page_controls[i].text == '>>':
+                advance_several = i
+        if advance_several == -1:
+            raise ValueError("page_num out of range")
+        else:
+            page_controls[advance_several].click()
+
+def convert_csv_row_to_result(csv_row):
+    if len(csv_row) > 7:
+        return {
+            'name': csv_row[0],
+            'summary_link': csv_row[1],
+            'location': csv_row[2],
+            'party': csv_row[3],
+            'office_or_type': csv_row[4],
+            'election_type': csv_row[5],
+            'year': csv_row[6],
+            'date': csv_row[7],
+            'form': csv_row[8],
+            'period': csv_row[9],
+            'amendment': csv_row[10],
+            'url': csv_row[11]
+        }
+    else:
+        return {
+            'name': csv_row[0],
+            'summary_link': csv_row[1],
+            'location': csv_row[2],
+            'party': csv_row[3],
+            'office_or_type': csv_row[4],
+            'election_type': csv_row[5],
+            'year': csv_row[6],
+        }
+
+def get_filing_list(first_name, last_name, year, office, outfile, get_filings, upload_pdfs, logfile):
     print("Began scraping with params {} {} {} {} {}".format(first_name, last_name, year, office, outfile))
+
+    results = []
+    reader = csv.reader(logfile)
+    for row in reader:
+        results.append(convert_csv_row_to_result(row))
+    print(len(results))
+
     previously_scraped = []
     if outfile is not None and outfile != '':
         previously_scraped = get_previously_scraped_from_s3(outfile.split('/')[-1])
@@ -129,7 +181,10 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
     else:
         page_controls = None
 
-    results = []
+    if len(results) > 25:
+        advance_to_page(browser, page_controls_xpath, (len(results) // 25) + 1)
+    writer = csv.writer(logfile)
+
     while True:
         wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
         wait.until(
@@ -155,7 +210,8 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
             try:
                 name_row.click()
             except WebDriverException:
-                print(" ".join[name, location, party, office_or_type, election_type, year] + " FAILED")
+                print(" ".join([name, location, party, office_or_type, election_type, year]) + " FAILED")
+                continue
 
             try:
                 wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
@@ -229,8 +285,24 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
                             pass
                     else:
                         details['url'] = ''
-
-                    results.append(details)
+                    
+                    if details not in results:
+                        writer.writerow([
+                            details['name'],
+                            details['summary_link'],
+                            details['location'],
+                            details['party'],
+                            details['office_or_type'],
+                            details['election_type'],
+                            details['year'],
+                            details['date'],
+                            details['form'],
+                            details['period'],
+                            details['amendment'],
+                            details['url']
+                        ])
+                        logfile.flush()
+                        results.append(details)
             else:
                 details = {
                     'name': name.strip(),
@@ -241,7 +313,19 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
                     'election_type': election_type,
                     'year': year,
                 }
-                results.append(details)
+
+                if details not in results:
+                    writer.writerow([
+                            details['name'],
+                            details['summary_link'],
+                            details['location'],
+                            details['party'],
+                            details['office_or_type'],
+                            details['election_type'],
+                            details['year'],
+                    ])
+                    logfile.flush()
+                    results.append(details)
         
         if check_exists_by_xpath(page_controls_xpath, browser):
             page_controls = browser.find_elements_by_xpath(page_controls_xpath)
@@ -260,11 +344,12 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
         sys.stdout.write(json.dumps(results))
 
 def main():
-    get_filing_list(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6].lower() == 'true', sys.argv[7].lower() == 'true')
-    schedule.every(6).hours.do(get_filing_list, sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[7].lower() == 'true', sys.argv[7].lower() == 'true')
+    with open('log.csv', 'r+') as logfile:
+        get_filing_list(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6].lower() == 'true', sys.argv[7].lower() == 'true', logfile)
+    '''schedule.every(6).hours.do(get_filing_list, sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[7].lower() == 'true', sys.argv[7].lower() == 'true', logfile)
     while True:
         schedule.run_pending()
-        time.sleep(1)
+        time.sleep(1)'''
 
 if __name__=='__main__':
     main()

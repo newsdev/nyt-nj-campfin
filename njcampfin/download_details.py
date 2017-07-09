@@ -11,6 +11,9 @@ try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
+from http.client import RemoteDisconnected
+import errno
+import traceback
 
 def get_json_file_from_url(url):
     data = []
@@ -29,8 +32,32 @@ def get_entity_data_from_url(entity_url, data_type_code):
         'Referer': entity_url
 
     })
-    r = s.get(entity_url)
+    try:
+        r = s.get(entity_url)
+    except Exception as e:
+        print(traceback.format_exc())
+        print(entity_url + " FAILED")
+        return ''
+    except OSError as e:
+        if e.errno not in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+            raise
+        else:
+            print(entity_url + " FAILED")
+            return ''
+    except ConnectionResetError:
+        print(entity_url + " FAILED")
+        return ''
+    except RemoteDisconnected:
+        print(entity_url + " FAILED")
+        return ''
+    except requests.exceptions.ConnectionError:
+        print(entity_url + " FAILED")
+        return ''
+    
     soup = BeautifulSoup(r.text)
+    if soup.find('input', {'id':'__VIEWSTATE'}) is None:
+        print(entity_url + " FAILED")
+        return ''
     viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
     viewstategenerator = soup.find('input', {'id':'__VIEWSTATEGENERATOR'})['value']
     txtEntityId = soup.find('input', {'name':'ctl00$ContentPlaceHolder1$txtEntityId'})['value']
@@ -61,7 +88,27 @@ def get_entity_data_from_url(entity_url, data_type_code):
         '__VIEWSTATEGENERATOR': viewstategenerator
     }
 
-    r = s.post(entity_url, data=data)
+    try:
+        r = s.post(entity_url, data=data)
+    except Exception as e:
+        print(traceback.format_exc())
+        print(entity_url + " FAILED")
+        return ''
+    except OSError as e:
+        if e.errno not in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+            raise
+        else:
+            print(entity_url + " FAILED")
+            return ''
+    except ConnectionResetError:
+        print(entity_url + " FAILED")
+        return ''
+    except RemoteDisconnected:
+        print(entity_url + " FAILED")
+        return ''
+    except requests.exceptions.ConnectionError:
+        print(entity_url + " FAILED")
+        return ''
     return r.content
 
 def get_campfin_data(url, data_type):
@@ -71,10 +118,12 @@ def get_campfin_data(url, data_type):
     header = []
 
     for json_obj in entity_json:
-        if json_obj['summary_link'] not in entity_urls:
+        if 'summary_link' in json_obj and json_obj['summary_link'] not in entity_urls and json_obj['summary_link'] != '':
             entity_url = json_obj['summary_link']
             entity_urls.append(json_obj['summary_link'])
             entity_data = get_entity_data_from_url(entity_url, data_type)
+            if entity_data == '':
+                continue
             print(entity_url)
             f = StringIO(entity_data.decode('utf-8'))
 
