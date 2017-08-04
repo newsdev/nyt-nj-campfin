@@ -31,23 +31,26 @@ def get_data_for_entity(entity):
     except Exception as e:
         print(traceback.format_exc())
         print(entity + " FAILED")
-        return ''
+        return 'err'
     except OSError as e:
         if e.errno not in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
             raise
         else:
             print(entity + " FAILED")
-            return ''
+            return 'err'
     except ConnectionResetError:
         print(entity + " FAILED")
-        return ''
+        return 'err'
     except RemoteDisconnected:
         print(entity + " FAILED")
-        return ''
+        return 'err'
     except requests.exceptions.ConnectionError:
         print(entity + " FAILED")
-        return ''
+        return 'err'
     soup = BeautifulSoup(r.text)
+    if soup.find('input', {'id':'__VIEWSTATE'}) is None:
+        print(entity + " FAILED")
+        return 'err'
     viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
     viewstategenerator = soup.find('input', {'id':'__VIEWSTATEGENERATOR'})['value']
 
@@ -106,27 +109,27 @@ def get_data_for_entity(entity):
     except Exception as e:
         print(traceback.format_exc())
         print(entity + " FAILED")
-        return ''
+        return 'err'
     except OSError as e:
         if e.errno not in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
             raise
         else:
             print(entity + " FAILED")
-            return ''
+            return 'err'
     except ConnectionResetError:
         print(entity + " FAILED")
-        return ''
+        return 'err'
     except RemoteDisconnected:
         print(entity + " FAILED")
-        return ''
+        return 'err'
     except requests.exceptions.ConnectionError:
         print(entity + " FAILED")
-        return ''
+        return 'err'
     soup = BeautifulSoup(r.text)
 
     if soup.find('input', {'id':'__VIEWSTATE'}) is None:
         print(entity + " FAILED")
-        return ''
+        return 'err'
     viewstate = soup.find('input', {'id':'__VIEWSTATE'})['value']
     viewstategenerator = soup.find('input', {'id':'__VIEWSTATEGENERATOR'})['value']
 
@@ -185,22 +188,22 @@ def get_data_for_entity(entity):
     except Exception as e:
         print(traceback.format_exc())
         print(entity + " FAILED")
-        return ''
+        return 'err'
     except OSError as e:
         if e.errno not in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
             raise
         else:
             print(entity + " FAILED")
-            return ''
+            return 'err'
     except ConnectionResetError:
         print(entity + " FAILED")
-        return ''
+        return 'err'
     except RemoteDisconnected:
         print(entity + " FAILED")
-        return ''
+        return 'err'
     except requests.exceptions.ConnectionError:
         print(entity + " FAILED")
-        return ''
+        return 'err'
     return r.content
 
 def clean_organization_name(name):
@@ -218,19 +221,21 @@ def main():
     entities = []
     header = []
     results = []
+    failures = []
     with open(sys.argv[1], 'r') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             entities.append(clean_organization_name(row[0]))
     for entity in entities:
         entity_data = get_data_for_entity(entity)
-        if entity_data == '':
+        if entity_data == 'err':
+            failures.append(entity)
             continue
         f = StringIO(entity_data.decode('utf-8'))
         reader = csv.reader(f)
         header = next(reader)
         for row in reader:
-            results.append(row)
+            results.append(row + [entity])
         print(entity)
 
     if (len(sys.argv) >= 2 and sys.argv[2] is not None and sys.argv[2] != ''):
@@ -238,6 +243,13 @@ def main():
             writer = csv.writer(f)
             writer.writerow(header)
             writer.writerows(results)
+    else:
+        print(results)
+
+    if (len(sys.argv) >= 3 and sys.argv[3] is not None and sys.argv[3] != ''):
+        with open(sys.argv[3], 'w') as g:
+            writer = csv.writer(g)
+            writer.writerows(failures)
     else:
         print(results)
 

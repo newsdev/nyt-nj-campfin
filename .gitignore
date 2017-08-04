@@ -10,3 +10,6 @@ out.json
 temp_filing.pdf
 build/
 dist/
+*.csv
+*.json
+*.html
