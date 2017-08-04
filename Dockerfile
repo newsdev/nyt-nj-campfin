@@ -2,6 +2,8 @@ FROM markadams/chromium-xvfb-py3
 
 ENV KUBERNETES_SECRET_ENV_VERSION=0.0.2
 
+RUN apt-get remove python-pip
+
 RUN \
   mkdir -p /etc/secret-volume && \
   cd /usr/local/bin && \
@@ -14,8 +16,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/app
-
-RUN apt-get remove python-pip
 
 RUN apt-get update && \
   apt-get install libxml2-dev libxslt-dev python-dev lib32z1-dev -y
