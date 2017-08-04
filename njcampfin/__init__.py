@@ -136,10 +136,11 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
     print("Began scraping with params {} {} {} {} {}".format(first_name, last_name, year, office, outfile))
 
     results = []
-    reader = csv.reader(logfile)
-    for row in reader:
-        results.append(convert_csv_row_to_result(row))
-    print(len(results))
+    if logfile is not None and logfile != '':
+        reader = csv.reader(logfile)
+        for row in reader:
+            results.append(convert_csv_row_to_result(row))
+        print(len(results))
 
     previously_scraped = []
     if outfile is not None and outfile != '':
@@ -183,7 +184,8 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
 
     if len(results) > 25:
         advance_to_page(browser, page_controls_xpath, (len(results) // 25) + 1)
-    writer = csv.writer(logfile)
+    if logfile is not None and logfile != '':
+        writer = csv.writer(logfile)
 
     while True:
         wait = WebDriverWait(browser, int(os.environ['WAIT_TIME']))
@@ -286,7 +288,7 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
                     else:
                         details['url'] = ''
                     
-                    if details not in results:
+                    if details not in results and logfile is not None and logfile != '':
                         writer.writerow([
                             details['name'],
                             details['summary_link'],
@@ -302,6 +304,7 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
                             details['url']
                         ])
                         logfile.flush()
+                    if details not in results:
                         results.append(details)
             else:
                 details = {
@@ -314,7 +317,7 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
                     'year': year,
                 }
 
-                if details not in results:
+                if details not in results and logfile is not None and logfile != '':
                     writer.writerow([
                             details['name'],
                             details['summary_link'],
@@ -325,6 +328,7 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
                             details['year'],
                     ])
                     logfile.flush()
+                if details not in results:
                     results.append(details)
         
         if check_exists_by_xpath(page_controls_xpath, browser):
@@ -344,12 +348,12 @@ def get_filing_list(first_name, last_name, year, office, outfile, get_filings, u
         sys.stdout.write(json.dumps(results))
 
 def main():
-    with open('log.csv', 'r+') as logfile:
-        get_filing_list(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6].lower() == 'true', sys.argv[7].lower() == 'true', logfile)
-    '''schedule.every(6).hours.do(get_filing_list, sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[7].lower() == 'true', sys.argv[7].lower() == 'true', logfile)
+    '''with open('log.csv', 'r+') as logfile:
+    get_filing_list(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6].lower() == 'true', sys.argv[7].lower() == 'true', None)'''
+    schedule.every(6).hours.do(get_filing_list, sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[7].lower() == 'true', sys.argv[7].lower() == 'true', None)
     while True:
         schedule.run_pending()
-        time.sleep(1)'''
+        time.sleep(1)
 
 if __name__=='__main__':
     main()
