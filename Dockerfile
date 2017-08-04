@@ -1,5 +1,18 @@
 FROM markadams/chromium-xvfb-py3
 
+ENV KUBERNETES_SECRET_ENV_VERSION=0.0.2
+
+RUN \
+  mkdir -p /etc/secret-volume && \
+  cd /usr/local/bin && \
+  curl -sfLO https://github.com/newsdev/kubernetes-secret-env/releases/download/$KUBERNETES_SECRET_ENV_VERSION/kubernetes-secret-env && \
+  chmod +x kubernetes-secret-env
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        nginx \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /usr/src/app
 
 RUN apt-get remove python-pip
@@ -12,6 +25,9 @@ RUN pip3 install -r /usr/src/app/requirements.txt
 COPY . /usr/src/app/
 
 ENV PYTHONPATH=/usr/src/app
+
+RUN echo "daemon off;" >> /etc/nginx/nginx.conf
+COPY config/nginx-app.conf /etc/nginx/nginx.conf
 
 RUN mkdir -p /var/www/data
 
